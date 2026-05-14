@@ -231,6 +231,7 @@ async def countdown_command(ctx):
 
 
 GOOPED_UP_GIRL_ID = 311874651750006785
+XOS_ID = 361616461925580800
 
 
 # Keep bot alive with heartbeat logging
@@ -240,12 +241,21 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.author.id == GOOPED_UP_GIRL_ID and bot.user in message.mentions:
-        try:
-            await message.reply("Yes mommy")
-            log(f"Replied 'Yes mommy' to {message.author}")
-        except Exception as e:
-            log(f"Error replying to mention: {e}")
+    if bot.user in message.mentions:
+        if message.author.id == GOOPED_UP_GIRL_ID:
+            try:
+                await message.reply("Yes mommy")
+                log(f"Replied 'Yes mommy' to {message.author}")
+            except Exception as e:
+                log(f"Error replying to mention: {e}")
+        elif message.author.id == XOS_ID:
+            total_secs, _ = get_time_remaining()
+            if total_secs <= 0:
+                try:
+                    await message.reply("Yes doctor")
+                    log(f"Replied 'Yes doctor' to {message.author}")
+                except Exception as e:
+                    log(f"Error replying to mention: {e}")
 
     await bot.process_commands(message)
 
