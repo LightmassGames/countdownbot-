@@ -15,7 +15,6 @@ CHANNEL_ID = int(os.getenv('CHANNEL_ID', '0'))  # Set in .env
 
 # Create bot with intents
 intents = discord.Intents.default()
-intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Global variables
@@ -125,19 +124,33 @@ async def countdown_update(wait_seconds):
 async def on_ready():
     """Bot ready event - start countdown"""
     global target_time
-    print(f'{bot.user} has connected to Discord!')
-    
-    if CHANNEL_ID == 0:
-        print("ERROR: CHANNEL_ID not set in .env file")
-        return
-    
-    target_time = get_next_friday_2pm()
-    print(f"Countdown target: {target_time}")
-    print(f"Posting to channel: {CHANNEL_ID}")
-    
-    # Post initial message and schedule updates
-    await post_countdown()
-    await schedule_next_update()
+    try:
+        print(f'{bot.user} has connected to Discord!')
+        print(f"Bot ID: {bot.user.id}")
+        
+        if CHANNEL_ID == 0:
+            print("ERROR: CHANNEL_ID not set in .env file")
+            return
+        
+        channel = bot.get_channel(CHANNEL_ID)
+        if channel is None:
+            print(f"ERROR: Channel {CHANNEL_ID} not found. Bot may not have access.")
+            return
+        
+        print(f"Channel found: {channel.name}")
+        
+        target_time = get_next_friday_2pm()
+        print(f"Countdown target: {target_time}")
+        print(f"Posting to channel: {CHANNEL_ID}")
+        
+        # Post initial message and schedule updates
+        await post_countdown()
+        await schedule_next_update()
+        print("Bot ready and countdown scheduled!")
+    except Exception as e:
+        print(f"ERROR in on_ready: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 @bot.command(name='countdown')
