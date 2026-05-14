@@ -122,36 +122,63 @@ async def countdown_update(wait_seconds):
 
 
 @bot.event
+async def on_error(event, *args, **kwargs):
+    """Global error handler"""
+    print(f"\n{'='*50}")
+    print(f"✗ ERROR in event: {event}")
+    import traceback
+    traceback.print_exc()
+    print(f"{'='*50}\n")
+
+
+@bot.event
 async def on_ready():
     """Bot ready event - start countdown"""
     global target_time
     try:
-        print(f'{bot.user} has connected to Discord!')
-        print(f"Bot ID: {bot.user.id}")
+        print(f"\n{'='*50}")
+        print(f"✓ Bot connected: {bot.user}")
+        print(f"✓ Bot ID: {bot.user.id}")
         
-        if CHANNEL_ID == 0:
-            print("ERROR: CHANNEL_ID not set in .env file")
+        if not CHANNEL_ID or CHANNEL_ID == 0:
+            print(f"✗ ERROR: CHANNEL_ID not set or is 0")
+            print(f"  CHANNEL_ID value: {CHANNEL_ID}")
             return
         
-        channel = bot.get_channel(CHANNEL_ID)
+        print(f"✓ Target channel ID: {CHANNEL_ID}")
+        
+        # Get channel
+        channel = bot.get_channel(int(CHANNEL_ID))
         if channel is None:
-            print(f"ERROR: Channel {CHANNEL_ID} not found. Bot may not have access.")
+            print(f"✗ ERROR: Could not get channel {CHANNEL_ID}")
+            print(f"  Bot may not have access to this channel")
             return
         
-        print(f"Channel found: {channel.name}")
+        print(f"✓ Channel found: {channel.name}")
+        print(f"✓ Channel guild: {channel.guild.name}")
         
+        # Calculate target time
         target_time = get_next_friday_2pm()
-        print(f"Countdown target: {target_time}")
-        print(f"Posting to channel: {CHANNEL_ID}")
+        print(f"✓ Countdown target: {target_time}")
         
-        # Post initial message and schedule updates
+        # Post initial countdown
+        print(f"Posting initial countdown message...")
         await post_countdown()
+        print(f"✓ Initial message posted")
+        
+        # Schedule updates
+        print(f"Scheduling updates...")
         await schedule_next_update()
-        print("Bot ready and countdown scheduled!")
+        print(f"✓ Updates scheduled")
+        print(f"{'='*50}\n")
+        
     except Exception as e:
-        print(f"ERROR in on_ready: {e}")
+        print(f"\n{'='*50}")
+        print(f"✗ FATAL ERROR in on_ready:")
+        print(f"  {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
+        print(f"{'='*50}\n")
 
 
 @bot.command(name='countdown')
