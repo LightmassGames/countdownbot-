@@ -170,6 +170,22 @@ async def on_ready():
         traceback.print_exc(file=sys.stderr)
 
 
+def get_next_wait_time(total_secs: int) -> float:
+    """Return seconds until the next scheduled update."""
+    now = datetime.now()
+    if total_secs <= 30:
+        return 1.0
+    if total_secs <= 300:
+        next_minute = (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
+        wait = (next_minute - now).total_seconds()
+        return max(1.0, wait)
+    next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+    wait = (next_hour - now).total_seconds()
+    # Don't sleep past the 5-minute window — we need to switch to per-minute updates
+    wait = min(wait, total_secs - 300)
+    return max(1.0, wait)
+
+
 async def background_countdown():
     """Background task that posts countdown updates"""
     log("[BG] Countdown task started")
@@ -183,15 +199,8 @@ async def background_countdown():
                     log("[BG] Countdown complete")
                     break
                 
-                # Determine wait time
-                if total_secs <= 30:
-                    wait = 1
-                elif total_secs <= 300:
-                    wait = 60
-                else:
-                    wait = 3600
-                
-                log(f"[BG] Waiting {wait}s (remaining: {total_secs}s)")
+                wait = get_next_wait_time(total_secs)
+                log(f"[BG] Waiting {wait:.1f}s (remaining: {total_secs}s)")
                 await asyncio.sleep(wait)
                 
                 # Post update
