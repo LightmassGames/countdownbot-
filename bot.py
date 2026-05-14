@@ -7,13 +7,24 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 import os
 import asyncio
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-CHANNEL_ID = int(os.getenv('CHANNEL_ID', '0'))
+CHANNEL_ID_STR = os.getenv('CHANNEL_ID', '0')
 
-print(f"[INIT] Token: {bool(TOKEN)}, Channel: {CHANNEL_ID}")
+print(f"[INIT] Loading...")
+print(f"[INIT] Token present: {bool(TOKEN)}")
+print(f"[INIT] Channel ID env: {CHANNEL_ID_STR}")
+
+try:
+    CHANNEL_ID = int(CHANNEL_ID_STR)
+except:
+    CHANNEL_ID = 0
+    print(f"[ERROR] Invalid CHANNEL_ID: {CHANNEL_ID_STR}")
+
+print(f"[INIT] Parsed Channel ID: {CHANNEL_ID}")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -84,58 +95,93 @@ async def post_countdown():
         print(f"Error posting message: {e}")
 
 
-async def schedule_next_update():
-    """Schedule the next countdown update"""
-    try:
-        while True:
-            total_secs, _ = get_time_remaining()
-            
-            if total_secs <= 0:
-                print("[INFO] Countdown done")
-                break
-            
-            # Determine wait time
-            if total_secs <= 30:
-                wait_time = 1
-            elif total_secs <= 300:
-                wait_time = 60
-            else:
-                wait_time = 3600
-            
-            await asyncio.sleep(wait_time)
-            await post_countdown()
-            
-    except Exception as e:
-        print(f"[ERROR] Schedule: {e}")
-
-
 @bot.event
 async def on_ready():
     """Bot ready event"""
     global target_time
-    print(f"\n[SUCCESS] Connected as: {bot.user}")
+    print(f"\n[READY] Bot connected: {bot.user}")
+    print(f"[READY] Guilds: {len(bot.guilds)}")
+    
+    # Only fire once
+    if hasattr(bot, '_ready_fired'):
+        return
+    bot._ready_fired = True
     
     try:
+        print(f"[READY] Setting up countdown...")
+        
         if CHANNEL_ID == 0:
-            print("[ERROR] No CHANNEL_ID set")
+            print("[READY] ERROR: No CHANNEL_ID")
             return
-         
+        
         channel = bot.get_channel(CHANNEL_ID)
         if not channel:
-            print(f"[ERROR] Channel {CHANNEL_ID} not found")
+            print(f"[READY] ERROR: Channel {CHANNEL_ID} not accessible")
             return
         
-        print(f"[SUCCESS] Found channel: {channel.name}")
-        
+        print(f"[READY] Channel: {channel.name} ({CHANNEL_ID})")
         target_time = get_next_friday_2pm()
-        print(f"[SUCCESS] Target: {target_time}")
+        print(f"[READY] Target time: {target_time}")
         
-        await post_countdown()
-        bot.loop.create_task(schedule_next_update())
-        print("[SUCCESS] Bot ready!")
+        # Send initial message
+        try:
+            _, msg = get_time_remaining()
+            await channel.send(msg)
+            print(f"[READY] Initial message sent")
+        except Exception as e:
+            print(f"[READY] Failed to send initial message: {e}")
+        
+        # Start background countdown task
+        bot.loop.create_task(background_countdown())
+        print(f"[READY] Background task started")
+        print(f"[READY] Bot is ready! ✓\n")
         
     except Exception as e:
-        print(f"[ERROR] {e}")
+        print(f"[READY] FATAL ERROR: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+async def background_countdown():
+    """Background task that posts countdown updates"""
+    print("[BG] Countdown task started")
+    
+    try:
+        while True:
+            try:
+                total_secs, _ = get_time_remaining()
+                
+                if total_secs <= 0:
+                    print("[BG] Countdown complete")
+                    break
+                
+                # Determine wait time
+                if total_secs <= 30:
+                    wait = 1
+                elif total_secs <= 300:
+                    wait = 60
+                else:
+                    wait = 3600
+                
+                print(f"[BG] Waiting {wait}s (remaining: {total_secs}s)")
+                await asyncio.sleep(wait)
+                
+                # Post update
+                channel = bot.get_channel(CHANNEL_ID)
+                if channel:
+                    _, msg = get_time_remaining()
+                    await channel.send(msg)
+                    print(f"[BG] Posted: {msg}")
+                
+            except asyncio.CancelledError:
+                print("[BG] Task cancelled")
+                break
+            except Exception as e:
+                print(f"[BG] Error in loop: {e}")
+                await asyncio.sleep(5)
+                
+    except Exception as e:
+        print(f"[BG] FATAL ERROR: {e}")
         import traceback
         traceback.print_exc()
 
@@ -147,5 +193,27 @@ async def countdown_command(ctx):
     await ctx.send(message)
 
 
-print("[STARTUP] Running bot...")
-bot.run(TOKEN)
+# Keep bot alive with heartbeat logging
+@bot.event
+async def on_message(message):
+    """Log message events and process commands"""
+    if message.author == bot.user:
+        return
+    await bot.process_commands(message)
+
+
+print("\n" + "="*50)
+print("[STARTUP] Discord Countdown Bot")
+print(f"[STARTUP] Token: {'***' if TOKEN else 'MISSING'}")
+print(f"[STARTUP] Channel: {CHANNEL_ID}")
+print("="*50 + "\n")
+
+try:
+    bot.run(TOKEN)
+except KeyboardInterrupt:
+    print("\n[SHUTDOWN] Interrupted by user")
+except Exception as e:
+    print(f"\n[ERROR] Fatal error: {e}")
+    import traceback
+    traceback.print_exc()
+
