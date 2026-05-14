@@ -230,12 +230,23 @@ async def countdown_command(ctx):
     await ctx.send(message)
 
 
+GOOPED_UP_GIRL_ID = 311874651750006785
+
+
 # Keep bot alive with heartbeat logging
 @bot.event
 async def on_message(message):
     """Log message events and process commands"""
     if message.author == bot.user:
         return
+
+    if message.author.id == GOOPED_UP_GIRL_ID and bot.user in message.mentions:
+        try:
+            await message.reply("Yes mommy")
+            log(f"Replied 'Yes mommy' to {message.author}")
+        except Exception as e:
+            log(f"Error replying to mention: {e}")
+
     await bot.process_commands(message)
 
 
