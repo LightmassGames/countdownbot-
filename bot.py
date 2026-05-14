@@ -265,7 +265,7 @@ async def on_message(message):
     ):
         try:
             await message.channel.send(
-                f"\N{PLEADING FACE} yes <@{ADIZZEL_ID}> what do you think of me"
+                f"🥺 yes <@{ADIZZEL_ID}> what do you think of me"
             )
             log(f"Sent pleading-face line in response to {message.author}")
         except Exception as e:
