@@ -232,6 +232,7 @@ async def countdown_command(ctx):
 
 GOOPED_UP_GIRL_ID = 311874651750006785
 XOS_ID = 361616461925580800
+ADIZZEL_ID = 361378854528614403
 
 
 # Keep bot alive with heartbeat logging
@@ -256,6 +257,19 @@ async def on_message(message):
                     log(f"Replied 'Yes doctor' to {message.author}")
                 except Exception as e:
                     log(f"Error replying to mention: {e}")
+
+    if (
+        message.author.id == GOOPED_UP_GIRL_ID
+        and any(u.id == ADIZZEL_ID for u in message.mentions)
+        and "what do you think" in message.content.lower()
+    ):
+        try:
+            await message.channel.send(
+                f"\N{PLEADING FACE} yes <@{ADIZZEL_ID}> what do you think of me"
+            )
+            log(f"Sent pleading-face line in response to {message.author}")
+        except Exception as e:
+            log(f"Error sending pleading-face reply: {e}")
 
     await bot.process_commands(message)
 
