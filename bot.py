@@ -15,7 +15,8 @@ CHANNEL_ID = int(os.getenv('CHANNEL_ID', '0'))  # Set in .env
 
 # Create bot with intents
 intents = discord.Intents.default()
-bot = commands.Bot(command_prefix='!', intents=intents)
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
 # Global variables
 current_update_task = None
@@ -178,6 +179,9 @@ async def reset_command(ctx):
 
 if __name__ == '__main__':
     try:
+        print(f"Starting bot with token and channel ID: {CHANNEL_ID}")
         bot.run(TOKEN)
     except Exception as e:
-        print(f"Error starting bot: {e}")
+        print(f"Fatal error starting bot: {e}")
+        import traceback
+        traceback.print_exc()
