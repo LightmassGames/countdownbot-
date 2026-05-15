@@ -5,10 +5,14 @@ Countdown Bot - Discord bot that counts down to 2:00pm Friday
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import os
 import asyncio
 import sys
 from dotenv import load_dotenv
+
+BOT_VERSION = "1.06"
+TARGET_TZ = ZoneInfo("America/Chicago")
 
 # Use stderr for immediate output (won't be buffered)
 def log(msg):
@@ -55,19 +59,19 @@ last_message_time = None
 
 
 def get_next_friday_2pm():
-    """Calculate the next Friday at 2:00 PM"""
-    now = datetime.now()
-    
+    """Calculate the next Friday at 2:00 PM Central"""
+    now = datetime.now(TARGET_TZ)
+
     # Days until Friday (Friday is 4, Monday is 0)
     days_until_friday = (4 - now.weekday()) % 7
-    
+
     # If today is Friday and it's after 2 PM, get next Friday
     if days_until_friday == 0 and now.hour >= 14:
         days_until_friday = 7
-    
+
     target = now + timedelta(days=days_until_friday)
     target = target.replace(hour=14, minute=0, second=0, microsecond=0)
-    
+
     return target
 
 
@@ -76,8 +80,8 @@ def get_time_remaining():
     global target_time
     if target_time is None:
         target_time = get_next_friday_2pm()
-    
-    now = datetime.now()
+
+    now = datetime.now(TARGET_TZ)
     remaining = target_time - now
     total_seconds = int(remaining.total_seconds())
     
@@ -151,7 +155,17 @@ async def on_ready():
         log(f"[READY] Channel: {channel.name} ({CHANNEL_ID})")
         target_time = get_next_friday_2pm()
         log(f"[READY] Target time: {target_time}")
-        
+
+        # Announce deploy
+        try:
+            await channel.send(
+                f"Hello, mother has updated me to {BOT_VERSION}. "
+                f"I am now at least 1 more intelligent."
+            )
+            log(f"[READY] Deploy announcement sent (v{BOT_VERSION})")
+        except Exception as e:
+            log(f"[READY] Failed to send deploy announcement: {e}")
+
         # Send initial message immediately
         try:
             await post_countdown()
@@ -172,7 +186,7 @@ async def on_ready():
 
 def get_next_wait_time(total_secs: int) -> float:
     """Return seconds until the next scheduled update."""
-    now = datetime.now()
+    now = datetime.now(TARGET_TZ)
     if total_secs <= 30:
         return 1.0
     if total_secs <= 300:
